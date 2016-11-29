@@ -1,0 +1,43 @@
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+.PHONY: _build _clean _deploy
+#NAME :=
+#VERSION :=
+#REPOSITORY :=
+#DOCKER_HUB_USER ?=
+#DOCKER_HUB_PASSWORD ?=
+
+$(call check_defined, REPOSITORY, docker image repository)
+$(call check_defined, NAME, docker image name)
+$(call check_defined, VERSION, docker image name)
+
+image_build = docker images | egrep '$(REPOSITORY)/$(NAME)\s*$(VERSION)'
+
+_build:
+	$(call check_defined, VERSION, Image version)
+	if ! $(image_build); then \
+	docker build \
+	--build-arg https_proxy=$$HTTPS_PROXY --build-arg http_proxy=$$HTTP_PROXY \
+	--build-arg HTTPS_PROXY=$$HTTPS_PROXY --build-arg HTTP_PROXY=$$HTTP_PROXY \
+	--build-arg ftp_proxy=$$FTP_PROXY --build-arg FTP_PROXY=$$FTP_PROXY \
+	--build-arg no_proxy=$$NO_PROXY --build-arg NO_PROXY=$$NO_PROXY \
+	-t $(REPOSITORY)/$(NAME):$(VERSION) \
+	-t $(REPOSITORY)/$(NAME):latest .; \
+	fi
+	
+_clean:
+	$(call check_defined, VERSION, Image version)
+	if $(image_build); then \
+	$(MAKE) stop ;\
+	docker rmi -f $(REPOSITORY)/$(NAME):$(VERSION) ;\
+	docker rmi -f $(REPOSITORY)/$(NAME):latest ;\
+	fi
+
+_rebuild: clean build
+
+_deploy: build
+	$(call check_defined, VERSION, Image version)
+	$(call check_defined, DOCKER_HUB_USER DOCKER_HUB_PASSWORD, Docker repository login)
+	docker login -u $(DOCKER_HUB_USER) -p $(DOCKER_HUB_PASSWORD) && \
+	docker push $(REPOSITORY)/$(NAME):$(VERSION) && \
+	docker push $(REPOSITORY)/$(NAME):latest
