@@ -1,6 +1,6 @@
 REPOSITORY := erwinnttdata
 NAME := zimbra
-VERSION ?= 8.7.1_GA_008
+VERSION ?= 8.7.1_GA_009
 
 build: _build ##@targets Builds the docker image.
 
@@ -9,6 +9,10 @@ rebuild: _rebuild ##@targets Builds the docker image anew.
 clean: _clean ##@targets Removes the docker image.
 
 deploy: _deploy ##@targets Deploys the docker image to the repository.
+
+cleanup:
+	docker rm -f zimbra zimbra-data
+	docker volume rm zimbra zimbra-var zimbra-etc
 
 zimbra-bash: check-bind check-zimbra-data
 	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
@@ -62,6 +66,7 @@ zimbra-setup: check-bind check-zimbra-data
 	-p "7025:7025" \
 	--volumes-from "zimbra-data" \
 	--name zimbra $(REPOSITORY)/$(NAME) libexec/zmsetup.pl
+	docker rm zimbra
 
 zimbra: check-bind check-zimbra-data
 	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
