@@ -22,7 +22,8 @@ The Zimbra domain needs to be configured to have an A and a MX record.
 make bind-start
 ```
 
-* Example bind zone for Zimbra. The Zimbra domain will be `zimbra.local` with a mail domain `mx1.local`.
+* Example bind zone for Zimbra. The Zimbra domain will be `zimbra.local`
+with a mail domain `mx1.local`. The IP addresses must be changed.
 
 ```
 $ttl 38400
@@ -55,9 +56,11 @@ make zimbra
 ## Issues
 
 * If trying on a test machine with the bind container, the IP addresses can
-be mixed up.
+be mixed up depending on how many containers are already running and the
+start order of the containers.
 
-* Server status is red for all services, but the services are running;
+* Server status is red for all services, but the services are running. Below
+is the list of running services inside the Docker container.
 
 ```
 zimbra@zimbra:~$ zmcontrol status
@@ -83,8 +86,9 @@ Host zimbra.local
         zmconfigd               Running
 ```
 
-* Need to mount `/var` and `/etc` because the Zimbra setup modifies files in
-those directories that need to be preserved.
+* Need to mount `/opt/zimbra`, `/var` and `/etc` because the Zimbra setup 
+modifies files in those directories and those modifications must be preserved.
+Below is a list of the modified files.
 
 ```
 docker diff zimbra
@@ -145,7 +149,9 @@ A /var/spool/cron/crontabs/zimbra
 
 # Contributions
 
-The idea for the image was taken from the [zimbra-docker](https://github.com/Zimbra-Community/zimbra-docker) Git repository.
+The idea for the image was taken from
+the [zimbra-docker](https://github.com/Zimbra-Community/zimbra-docker)
+Git repository.
 
 # License
 
