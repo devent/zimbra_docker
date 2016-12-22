@@ -49,24 +49,8 @@ RUN set -x \
     && cd /usr/local/src/zimbra \
     && dpkg -i packages/*.deb; apt-get -f --quiet --yes install \
     && apt-get --yes install zimbra-memcached \
-    # Install Zimbra.
-    && DOCKER_HOST=$(cat /etc/hostname) \
-    && DOCKER_IP=$(cat /etc/hosts|grep $DOCKER_HOST|cut -f 1) \
-    && echo "127.0.0.1       localhost" > /etc/hosts \
-    && echo "::1     localhost ip6-localhost ip6-loopback" >> /etc/hosts \
-    && echo "fe00::0 ip6-localnet" >> /etc/hosts \
-    && echo "ff00::0 ip6-mcastprefix" >> /etc/hosts \
-    && echo "ff02::1 ip6-allnodes" >> /etc/hosts \
-    && echo "ff02::2 ip6-allrouters" >> /etc/hosts \
-    && echo "$DOCKER_IP $DOCKER_HOST.$HOST_DOMAIN $DOCKER_HOST" >> /etc/hosts \
-    && echo 'y\nn\nn\nn\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\n' > zimbra_keystrokes \
-    && apt-get update --quiet \
-    && echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections \
-    && ./install.sh --skip-upgrade-check -x < zimbra_keystrokes \
-    && if [ $? != 0 ]; then exit 1; fi \
-    && cat /tmp/install.log*; true \
     # Clean up.
-    && rm -rf /usr/local/src/zimbra/packages/*.deb \
+    #&& rm -rf /usr/local/src/zimbra/packages/*.deb \
     && apt-get autoclean \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -110,6 +94,12 @@ WORKDIR /opt/zimbra
 # Add entrypoint script.
 COPY docker-entrypoint.sh /usr/local/bin/
 
+# Add make-persistent script.
+COPY make-persistent.sh /usr/local/bin/
+
+# Add make-persistent script.
+COPY install-zimbra.sh /usr/local/bin/
+
 # Set entrypoint script.
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
@@ -124,8 +114,10 @@ COPY supervisor/openssh.conf /etc/supervisor/conf.d/
 
 # Set default configuration.
 RUN set -x \
-    # Make sure entrypoint script is executable.
-    && chmod +x /usr/local/bin/docker-entrypoint.sh
+    # Make sure scripts is executable.
+    && chmod +x /usr/local/bin/*.sh \
+    && mkdir -p /opt/etc \
+    && mkdir -p /opt/var
 
 # Zimbra directories.
-VOLUME ["/opt/zimbra", "/var", "/etc"]
+VOLUME ["/opt/etc", "/opt/var", "/opt/zimbra/data", "/opt/zimbra/db", "/opt/zimbra/index", "/opt/zimbra/mariadb", "/opt/zimbra/store", "/opt/zimbra/zmstat"]

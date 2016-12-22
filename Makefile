@@ -1,6 +1,11 @@
 REPOSITORY := erwinnttdata
 NAME := zimbra
-VERSION ?= 8.7.1_GA_009
+VERSION ?= 8.7.1_GA_003
+PROXY := -e "https_proxy=$$HTTPS_PROXY" -e "http_proxy=$$HTTP_PROXY" \
+-e "HTTPS_PROXY=$$HTTPS_PROXY" -e "HTTP_PROXY=$$HTTP_PROXY" \
+-e "ftp_proxy=$$FTP_PROXY" -e "FTP_PROXY=$$FTP_PROXY" \
+-e "no_proxy=$$NO_PROXY" -e "NO_PROXY=$$NO_PROXY"
+
 
 build: _build ##@targets Builds the docker image.
 
@@ -11,8 +16,8 @@ clean: _clean ##@targets Removes the docker image.
 deploy: _deploy ##@targets Deploys the docker image to the repository.
 
 cleanup:
-	docker rm -f zimbra zimbra-data
-	docker volume rm zimbra zimbra-var zimbra-etc
+	docker rm -f zimbra zimbra-data; true
+	sudo rm -rf "/appl/zimbra"
 
 zimbra-bash: check-bind check-zimbra-data
 	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
@@ -30,7 +35,7 @@ zimbra-bash: check-bind check-zimbra-data
 	-p "8993:993" \
 	-p "7025:7025" \
 	--volumes-from "zimbra-data" \
-	--name zimbra $(REPOSITORY)/$(NAME) bash
+	--name zimbra $(REPOSITORY)/$(NAME):$(VERSION) bash
 
 zimbra-bash-no-volumes: check-bind
 	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
@@ -47,26 +52,7 @@ zimbra-bash-no-volumes: check-bind
 	-p "8443:443" \
 	-p "8993:993" \
 	-p "7025:7025" \
-	--name zimbra $(REPOSITORY)/$(NAME) bash
-
-zimbra-setup: check-bind check-zimbra-data
-	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
-	docker run -it \
-	--dns $$bind_container_ip \
-	--hostname "zimbra" \
-	-e "ZIMBRA_FQDN=zimbra.local" \
-	-p "8022:22" \
-	-p "8025:25" \
-	-p "8080:80" \
-	-p "8110:110" \
-	-p "8143:143" \
-	-p "8389:389" \
-	-p "8443:443" \
-	-p "8993:993" \
-	-p "7025:7025" \
-	--volumes-from "zimbra-data" \
-	--name zimbra $(REPOSITORY)/$(NAME) libexec/zmsetup.pl
-	docker rm zimbra
+	--name zimbra $(REPOSITORY)/$(NAME):$(VERSION) bash
 
 zimbra: check-bind check-zimbra-data
 	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
@@ -84,16 +70,28 @@ zimbra: check-bind check-zimbra-data
 	-p "8993:993" \
 	-p "7025:7025" \
 	--volumes-from "zimbra-data" \
-	--name zimbra $(REPOSITORY)/$(NAME)
+	--name zimbra \
+	$(REPOSITORY)/$(NAME):$(VERSION)
 
 zimbra-data:
+	set -x && \
+	bind_container_ip=$$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind) && \
 	docker run \
-	-v "zimbra:/opt/zimbra" \
-	-v "zimbra-etc:/etc" \
-	-v "zimbra-var:/var" \
-	--name zimbra-data \
-	$(REPOSITORY)/$(NAME) \
-	bash -c "true"
+	-it \
+	--dns $$bind_container_ip \
+	--hostname "zimbra" \
+	$(PROXY) \
+	-e "ZIMBRA_FQDN=zimbra.local" \
+	-u root \
+	-v "/appl/zimbra/data:/opt/zimbra/data" \
+	-v "/appl/zimbra/db:/opt/zimbra/db" \
+	-v "/appl/zimbra/index:/opt/zimbra/index" \
+	-v "/appl/zimbra/mariadb:/opt/zimbra/mariadb" \
+	-v "/appl/zimbra/store:/opt/zimbra/store" \
+	-v "/appl/zimbra/zmstat:/opt/zimbra/zmstat" \
+	-v "/appl/zimbra/opt/etc:/opt/etc" \
+	-v "/appl/zimbra/opt/var:/opt/var" \
+	--name "zimbra-data" $(REPOSITORY)/$(NAME):$(VERSION) bash
 
 bind-start:
 	docker run -d \
