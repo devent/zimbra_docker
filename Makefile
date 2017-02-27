@@ -1,31 +1,40 @@
-include Makefile.help
-include Makefile.functions
+# docker image version
+VERSION := 9.9.5-20170129
+# docker image name
+IMAGE_NAME := sameersbn/bind
+# docker container name
+NAME := bind-webmin
+# docker container arguments.
+VOLUMES := -v /var/bind:/data
+PORTS := -p 53:53/tcp -p 53:53/udp -p 10000:10000/tcp
 
-REPOSITORY := erwinnttdata
-NAME := zimbra
-VERSION ?= 8.7.1_GA_003
-PROXY := -e "https_proxy=$$HTTPS_PROXY" -e "http_proxy=$$HTTP_PROXY" \
--e "HTTPS_PROXY=$$HTTPS_PROXY" -e "HTTP_PROXY=$$HTTP_PROXY" \
--e "ftp_proxy=$$FTP_PROXY" -e "FTP_PROXY=$$FTP_PROXY" \
--e "no_proxy=$$NO_PROXY" -e "NO_PROXY=$$NO_PROXY"
+include docker_make_utils/Makefile.help
+include docker_make_utils/Makefile.functions
+include docker_make_utils/Makefile.container
 
+define DOCKER_CMD :=
+docker run \
+--name $(NAME) \
+$(VOLUMES) \
+$(PORTS) \
+-d \
+$(IMAGE)
+endef
 
-bind-start:
-	docker run -d \
-	-p 53:53 \
-	-p 53:53/udp \
-	-p 10000:10000 \
-	-v /var/lib/bind/etc:/etc/bind \
-	-v /var/lib/bind/zones:/var/lib/bind \
-	-v /var/lib/bind/webmin:/etc/webmin \
-	-e PASS=newpass \
-	-e NET=172.17.0.0\;192.168.0.0\;10.1.2.0 \
-	--name bind \
-	--hostname bind \
-	cosmicq/docker-bind
-	$(MAKE) bind-address
+run: _run ##@default Starts the container.
+.PHONY: run
 
-bind-address:
-	docker inspect --format '{{ .NetworkSettings.IPAddress }}' bind
+rerun: _rerun ##@targets Stops and starts the container.
+.PHONY: rerun
 
-.PHONY +: build rebuild clean deploy bind-start check-bind check-zimbra-data
+rm: _rm ##@targets Stops and removes the container.
+.PHONY: rm
+
+clean: _clean ##@targets Stops and removes the container and removes all created files.
+.PHONY: clean
+
+test: _test ##@targets Tests if the container is running.
+.PHONY: test
+
+restart: _restart ##@targets Restarts the container.
+.PHONY: restart
